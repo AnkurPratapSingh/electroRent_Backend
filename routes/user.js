@@ -115,7 +115,7 @@ var transporter = nodeMailer.createTransport({
                 }
         })})
 
-    router.get('/get',auth.authenticationToken,(req,res)=>{
+    router.get('/get',auth.authenticationToken,checkRole.checkRole,(req,res)=>{
        // const user = req.body;
         query = "select email,password,role,status from user where role='user';"
         connection.query(query,(err,result)=>{
@@ -131,7 +131,7 @@ var transporter = nodeMailer.createTransport({
 
     })
 
-    router.patch('/update',auth.authenticationToken,(req,res)=>{
+    router.patch('/update',auth.authenticationToken,checkRole.checkRole,(req,res)=>{
         let user = req.body;
         var query = "update user set status=? where id=?";
         connection.query(query,[user.status,user.id],(err,result)=>{
@@ -153,7 +153,34 @@ var transporter = nodeMailer.createTransport({
     })
 
 
-    router.post('/updatePassword',(req,res)=>{
-
+    router.post('/changePassword',auth.authenticationToken,(req,res)=>{
+       
+        const user = req.body;
+        const email = res.locals.email;
+        var query = "select * from user where email = ? and password=?";
+        connection.query(query,[email,user.oldPassword],(err,result)=>{
+            if(!err){
+                if(result.length<=0){
+                    return res.status(400).json({message:"Incorect old password"});
+                }
+                else if(result[0].password==user.oldPassword){
+                    query = "update user set password =? where email = ?";
+                    connection.query(query,[user.newPassword,email],(err,result)=>{
+                        if(!err){
+                            return res.status(200).json({message:"Password Changed succesfully"})
+                        }
+                        else{
+                            return res.status(500).json(err);
+                        } 
+                    })
+                }
+                else{
+                    return res.status(400).json({message:"Something went wrong"});
+                }
+            }
+            else{
+                return res.status(500).json(err);
+            }
+        })
     })
 module.exports = router;
